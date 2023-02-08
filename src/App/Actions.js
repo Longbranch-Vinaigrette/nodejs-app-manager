@@ -18,9 +18,11 @@ module.exports = class Actions {
 			const cmdResult = await exec(`cd ${this.path}; ${cmd};`);
 			if (cmdResult.stdout) {
 				console.log(`out: ${cmdResult.stdout}`);
+				return cmdResult.stdout;
 			}
 			if (cmdResult.stderr) {
 				console.log(`err: ${cmdResult.stderr}`);
+				return cmdResult.stderr;
 			}
 		} catch (err) {
 			console.error(err);
