@@ -1,119 +1,90 @@
 "use strict";
 
-const { spawn } = require("child_process");
+const { promisify } = require("util");
+const exec = promisify(require("child_process").exec);
 
 module.exports = class Actions {
-	/**Run command and pipe the output to the console
-	 *
-	 */
-	runAndPipeOutput(cmdName, args = []) {
-		const cmd = spawn(cmdName, args ?? []);
-
-		cmd.stdout.on("data", (data) => {
-			console.log(`${data}`);
-		});
-
-		cmd.stderr.on("data", (data) => {
-			console.log(`${data}`);
-		});
-
-		cmd.on("close", (code) => {
-			console.log(`child process exited with code ${code}`);
-		});
+	constructor(path) {
+		// I'm gonna need the path to cd there
+		this.path = path;
 	}
 
-	/**Get the command
+	/**Run commands and print the result to the console
 	 *
 	 */
-	parseCmd(cmd) {
-		return cmd.split(" ")[0];
-	}
-
-	/**Parse arguments
-	 *
-	 */
-	parseArgs(cmd) {
-		// Remove the command
-		const cmdSplitted = cmd.split(" ");
-		const newArguments = [];
-
-		// Get arguments
-		cmdSplitted.forEach((value, index) => {
-			if (index !== 0) {
-				newArguments.splice(index - 1, 0, value);
+	async runAndPrint(cmd) {
+		try {
+			// Cd to the project root and run its commands
+			const cmdResult = await exec(`cd ${this.path}; ${cmd};`);
+			if (cmdResult.stdout) {
+				console.log(`out: ${cmdResult.stdout}`);
 			}
-		});
-
-		return newArguments;
+			if (cmdResult.stderr) {
+				console.log(`err: ${cmdResult.stderr}`);
+			}
+		} catch (err) {
+			console.error(err);
+		}
 	}
 
 	/**Install app dependencies
 	 *
 	 */
-	installDependencies() {
-		return this.runAndPipeOutput("npm", ["install"]);
+	async installDependencies() {
+		return await this.runAndPrint("npm install");
 	}
 
 	/**Run build command
 	 *
 	 */
-	runBuild() {
+	async runBuild() {
 		const command = this.actions["build"];
 
 		// Validate command
 		if (!command) {
 			console.warn("Command 'build' not found.");
+			return;
 		}
 
-		// Parse command and arguments
-		const cmd = this.parseCmd(command);
-		const newArguments = this.parseArgs(command);
-
-		return this.runAndPipeOutput(cmd, newArguments);
+		return await this.runAndPrint(command);
 	}
 
 	/**Run app
 	 *
 	 */
-	run() {
+	async run() {
 		const command = this.actions["start"];
 
 		// Validate command
 		if (!command) {
 			console.warn("Command 'start' not found.");
+			return;
 		}
 
-		// Parse command and arguments
-		const cmd = this.parseCmd(command);
-		const newArguments = this.parseArgs(command);
-
-		return this.runAndPipeOutput(cmd, newArguments);
+		return await this.runAndPrint(command);
 	}
-	
+
 	/**Run test
-	 * 
+	 *
 	 * @returns {undefined}
 	 */
-	runTest() {
+	async runTest() {
 		const command = this.actions["test"];
-		
+
 		// Validate command
 		if (!command) {
 			console.warn("Command 'test' not found.");
+			return;
 		}
 
-		// Parse command and arguments
-		const cmd = this.parseCmd(command);
-		const newArguments = this.parseArgs(command);
-
-		return this.runAndPipeOutput(cmd, newArguments);
+		return await this.runAndPrint(command);
 	}
-	
+
 	/**Set actions
-	 * 
+	 *
 	 * The object should be the 'scripts' field on package.json
-	 * 
-	 * @param {object} actions 
+	 *
+	 * @param {object} actions
 	 */
 	setActions(actions) {
 		if (actions) {
